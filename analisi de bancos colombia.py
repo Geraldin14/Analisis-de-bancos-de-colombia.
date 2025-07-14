@@ -153,3 +153,71 @@ plt.tight_layout(); plt.show()
 ultimos_6m = df[df['Fecha'] >= df['Fecha'].max() - pd.DateOffset(months=6)]
 print('\n=== Últimos 6 meses – muestra ===')
 print(ultimos_6m[['Fecha','Banco','Tasa_Activa']].head())
+
+# --------------------------------------------------
+# Tablero Gerencial – Visualización resumen (4 paneles)
+# Requiere: df, summary, summary_final ya definidos
+# --------------------------------------------------
+
+fig, axs = plt.subplots(2, 2, figsize=(16, 10))
+fig.suptitle('📊 Tablero Gerencial de Bancos en Colombia', fontsize=16)
+
+# --------------------------------------
+# Panel 1: Ranking de Score
+# --------------------------------------
+sns.barplot(data=summary_final,
+            y='Banco', x='Score',
+            palette='Blues_r', ax=axs[0,0],
+            order=summary_final['Banco'])
+axs[0,0].set_title('Ranking ponderado de bancos')
+axs[0,0].set_xlabel('Score'); axs[0,0].set_ylabel('')
+for i, v in enumerate(summary_final['Score']):
+    axs[0,0].text(v + 0.01, i, f'{v:.2f}', va='center')
+
+# --------------------------------------
+# Panel 2: Comparativo Tasa/NPS/Reclamos
+# --------------------------------------
+melt = summary.melt(id_vars='Banco',
+                    value_vars=['Tasa_Activa', 'Satisfaccion_NPS', 'Reclamos_Mensuales'],
+                    var_name='Métrica', value_name='Valor')
+sns.barplot(data=melt, x='Valor', y='Banco',
+            hue='Métrica', palette='Set2', ax=axs[0,1])
+axs[0,1].set_title('Comparativo: Tasa, NPS y Reclamos')
+axs[0,1].set_xlabel(''); axs[0,1].set_ylabel('')
+axs[0,1].legend(title='Métrica', loc='lower right')
+
+# --------------------------------------
+# Panel 3: Heatmap de Correlaciones
+# --------------------------------------
+corr_cols = ['Tasa_Activa','Clientes','Satisfaccion_NPS',
+             'Tiempo_Espera_Min','Reclamos_Mensuales',
+             'Uso_Canales_Digitales_%']
+sns.heatmap(summary[corr_cols].corr(), annot=True,
+            cmap='BrBG', fmt='.2f', ax=axs[1,0])
+axs[1,0].set_title('Correlaciones entre métricas')
+
+# --------------------------------------
+# Panel 4: Bubble Chart – Tasa vs Digitalización
+# --------------------------------------
+sizes = summary['Clientes'] / 2_000_000
+scatter = axs[1,1].scatter(summary['Tasa_Activa'],
+                           summary['Uso_Canales_Digitales_%'],
+                           s=sizes, alpha=0.65,
+                           c=summary['Satisfaccion_NPS'],
+                           cmap='coolwarm')
+for _, row in summary.iterrows():
+    axs[1,1].text(row['Tasa_Activa']+0.05,
+                  row['Uso_Canales_Digitales_%']+0.3,
+                  row['Banco'], fontsize=8)
+cbar = fig.colorbar(scatter, ax=axs[1,1])
+cbar.set_label('NPS (Satisfacción)')
+axs[1,1].set_xlabel('Tasa de interés (%)')
+axs[1,1].set_ylabel('Uso canales digitales (%)')
+axs[1,1].set_title('Tasa vs Digitalización (tamaño=clientes)')
+
+# --------------------------------------
+# Ajustes finales
+# --------------------------------------
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+plt.show()
+
